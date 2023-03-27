@@ -2,6 +2,7 @@ package com.utfpr.redes;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -10,6 +11,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.NoSuchElementException;
+import java.util.Scanner;
 import java.util.StringTokenizer;
 
 import lombok.AllArgsConstructor;
@@ -40,7 +42,7 @@ public class HttpRequest implements Runnable {
         RequestResponse(String statusLine) {
             this.statusLine = statusLine;
         }
-        
+
         @Override
         public String toString() {
             return statusLine;
@@ -58,33 +60,44 @@ public class HttpRequest implements Runnable {
     public void processRequest() throws Exception {
         InputStream inputStream = socket.getInputStream();
         RequestMessage requestResponseMessage = null;
-        DataOutputStream outputStream = new DataOutputStream(null);
-        FileInputStream fileStream = null;
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));) {
 
+        FileInputStream fileStream = null;
+        try {//(BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));) {
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             String requestLine = null;
             String headerLine = null;
+            int i = 0;
             while ((headerLine = reader.readLine()).length() != 0) {
+                if(i++ == 0)
+                    requestLine = headerLine;
                 System.out.println(headerLine);
             }
-            requestLine = "";
             String fileName = getFileNameFromRequest(requestLine);
+            System.out.println("filename:" + fileName);
+            File lala = new File(fileName);
+            if(!lala.exists()) {
+               throw new FileNotFoundException();
+            }
             fileStream = new FileInputStream(fileName);
-            requestResponseMessage = new RequestMessage(RequestResponse.OK, contentType(fileName), openAndGetFileContent(fileName) + CRLF);
-            
-            
+            requestResponseMessage = new RequestMessage(RequestResponse.OK, contentType(fileName) + CRLF, openAndGetFileContent(fileName) + CRLF);
+
         } catch(IOException | NoSuchElementException e) {
-            requestResponseMessage = new RequestMessage(RequestResponse.ERROR, "Content-type: text/html; charset=UTF-8", "<HTML>" +
-                    "<HEAD><TITLE>Not Found</TITLE></HEAD>" +
-                    "<BODY>Not Found</BODY></HTML>");
-            fileStream = new FileInputStream("index.html");
+            requestResponseMessage = new RequestMessage(RequestResponse.ERROR, "Content-type: text/html; charset=UTF-8" + CRLF,
+                    "<!DOCTYPE html><html>" +
+                    "<head><title>Not Found</title></head>" +
+                    "<body>Not Found</body></html>");
+            fileStream = new FileInputStream("./index.html");
+            e.printStackTrace();
         }
+        DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
         // Send the status line.
         outputStream.writeBytes(requestResponseMessage.getStatus().toString());
         // Send the content type line.
         outputStream.writeBytes(requestResponseMessage.getContentTypeLine());
         // Send a blank line to indicate the end of the header lines.
         outputStream.writeBytes(CRLF);
+        //outputStream.writeBytes(requestResponseMessage.getEntityBody());
         sendBytes(fileStream, outputStream);
         fileStream.close();
         socket.close();
@@ -93,19 +106,29 @@ public class HttpRequest implements Runnable {
     public String getFileNameFromRequest(String request) throws NoSuchElementException {
         StringTokenizer tokens = new StringTokenizer(request);
         tokens.nextToken(); // skip over the method, which should be "GET"
-        String fileName = tokens.nextToken();
+        String filename = null;
+        try {
+            filename = tokens.nextToken();
+        } catch(NoSuchElementException e) {
+            filename = "index.html"; //bad request
+        }
+
         // Prepend a "." so that file request is within the current directory.
-        return "." + fileName;
+        return "." + filename;
     }
 
     public String openAndGetFileContent(String fileName) throws IOException {
         FileInputStream fileStream = null;
-        fileStream = new FileInputStream(fileName);
-        
-        fileStream.close();
-        return "";
+        String data = "";
+        File file = new File(fileName);
+        Scanner myReader = new Scanner(file);
+        while (myReader.hasNextLine()) {
+          data += myReader.nextLine();
+        }
+        myReader.close();
+        return data;
     }
-    
+
     private static void sendBytes(FileInputStream fis, OutputStream os) throws Exception {
         // Construct a 1K buffer to hold bytes on their way to the socket.
         byte[] buffer = new byte[1024];
@@ -120,7 +143,7 @@ public class HttpRequest implements Runnable {
         if (fileName.endsWith(".htm") || fileName.endsWith(".html")) {
             return "Content-type: text/html; charset=UTF-8";
         }
-        if(fileName.endsWith(".png")) {
+        if(fileName.endsWith(".png") || fileName.endsWith(".jpg")) {
             return "Content-type: image/jpeg";
         }
         if(fileName.endsWith(".gif")) {

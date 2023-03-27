@@ -16,6 +16,7 @@ public class LocalConnectionListener {
     }
     
     public Socket listenForNewConnection() throws IOException {
-        return listenerSocket.accept();
+        Socket socket = listenerSocket.accept();
+        return socket;
     }
 }
