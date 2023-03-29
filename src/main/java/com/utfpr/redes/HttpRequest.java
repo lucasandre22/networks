@@ -75,9 +75,8 @@ public class HttpRequest implements Runnable {
             }
             String fileName = getFileNameFromRequest(requestLine);
             System.out.println("filename:" + fileName);
-            File lala = new File(fileName);
-            if(!lala.exists()) {
-               throw new FileNotFoundException();
+            if(! new File(fileName).exists()) {
+               throw new FileNotFoundException(fileName);
             }
             fileStream = new FileInputStream(fileName);
             requestResponseMessage = new RequestMessage(RequestResponse.OK, contentType(fileName) + CRLF, openAndGetFileContent(fileName) + CRLF);

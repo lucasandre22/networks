@@ -24,6 +24,5 @@ public class WebServer {
                 e.printStackTrace();
             }
         }
-
     }
 }

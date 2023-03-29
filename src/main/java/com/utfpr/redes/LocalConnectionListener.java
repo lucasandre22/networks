@@ -14,7 +14,7 @@ public class LocalConnectionListener {
     public LocalConnectionListener(int port) throws IOException {
         listenerSocket = new ServerSocket(port);
     }
-    
+
     public Socket listenForNewConnection() throws IOException {
         Socket socket = listenerSocket.accept();
         return socket;
