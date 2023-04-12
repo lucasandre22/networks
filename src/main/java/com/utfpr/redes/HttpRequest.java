@@ -75,7 +75,7 @@ public class HttpRequest implements Runnable {
             }
             String fileName = getFileNameFromRequest(requestLine);
             System.out.println("filename:" + fileName);
-            if(! new File(fileName).exists()) {
+            if(!new File(fileName).exists()) {
                throw new FileNotFoundException(fileName);
             }
             fileStream = new FileInputStream(fileName);
@@ -86,7 +86,7 @@ public class HttpRequest implements Runnable {
                     "<!DOCTYPE html><html>" +
                     "<head><title>Not Found</title></head>" +
                     "<body>Not Found</body></html>");
-            fileStream = new FileInputStream("./index.html");
+            fileStream = new FileInputStream("./error.html");
             e.printStackTrace();
         }
         DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
