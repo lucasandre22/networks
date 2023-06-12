@@ -19,7 +19,7 @@ public class WebServer {
             Socket socket = null;
             try {
                 socket = connection.listenForNewConnection();
-                new Thread(new HttpRequest(socket)).start();
+                new Thread(new HttpRequestProcessor(socket)).start();
             } catch (IOException e) {
                 e.printStackTrace();
             }

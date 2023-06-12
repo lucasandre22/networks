@@ -19,7 +19,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @AllArgsConstructor
-public class HttpRequest implements Runnable {
+public class HttpRequestProcessor implements Runnable {
 
     private static final String CRLF = "\r\n";
     private Socket socket;
@@ -27,25 +27,25 @@ public class HttpRequest implements Runnable {
     @AllArgsConstructor
     @Setter
     @Getter
-    private class RequestMessage {
-        RequestResponse status;
+    private class HttpRequestMessage {
+        HttpResponseStatus status;
         String contentTypeLine;
         String entityBody;
     }
-    
+
     @Getter
-    private enum RequestResponse {
+    private enum HttpResponseStatus {
         OK("HTTP/1.1 200 OK"),
-        ERROR("HTTP/1.1 404 ERROR");
+        ERROR("HTTP/1.1 404 Not Found");
 
         String statusLine;
-        RequestResponse(String statusLine) {
+        HttpResponseStatus(String statusLine) {
             this.statusLine = statusLine;
         }
 
         @Override
         public String toString() {
-            return statusLine;
+            return statusLine + CRLF;
         }
     }
 
@@ -59,10 +59,10 @@ public class HttpRequest implements Runnable {
 
     public void processRequest() throws Exception {
         InputStream inputStream = socket.getInputStream();
-        RequestMessage requestResponseMessage = null;
+        HttpRequestMessage HttpResponseStatusMessage = null;
 
         FileInputStream fileStream = null;
-        try {//(BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));) {
+        try {
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             String requestLine = null;
@@ -71,32 +71,31 @@ public class HttpRequest implements Runnable {
             while ((headerLine = reader.readLine()).length() != 0) {
                 if(i++ == 0)
                     requestLine = headerLine;
-                System.out.println(headerLine);
+                //System.out.println("Header:" + headerLine);
             }
             String fileName = getFileNameFromRequest(requestLine);
-            System.out.println("filename:" + fileName);
-            if(!new File(fileName).exists()) {
+            System.out.println("Filename:" + fileName);
+            File file = new File(fileName);
+            if(!file.exists() || file.isDirectory()) {
                throw new FileNotFoundException(fileName);
             }
             fileStream = new FileInputStream(fileName);
-            requestResponseMessage = new RequestMessage(RequestResponse.OK, contentType(fileName) + CRLF, openAndGetFileContent(fileName) + CRLF);
+            HttpResponseStatusMessage = new HttpRequestMessage(HttpResponseStatus.OK, contentType(fileName) + CRLF, "");
 
         } catch(IOException | NoSuchElementException e) {
-            requestResponseMessage = new RequestMessage(RequestResponse.ERROR, "Content-type: text/html; charset=UTF-8" + CRLF,
-                    "<!DOCTYPE html><html>" +
-                    "<head><title>Not Found</title></head>" +
-                    "<body>Not Found</body></html>");
+            HttpResponseStatusMessage = new HttpRequestMessage(HttpResponseStatus.ERROR, "Content-type: text/html; charset=UTF-8" + CRLF,
+                    "");
             fileStream = new FileInputStream("./error.html");
-            e.printStackTrace();
+            //e.printStackTrace();
         }
         DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
         // Send the status line.
-        outputStream.writeBytes(requestResponseMessage.getStatus().toString());
+        outputStream.writeBytes(HttpResponseStatusMessage.getStatus().toString());
         // Send the content type line.
-        outputStream.writeBytes(requestResponseMessage.getContentTypeLine());
+        outputStream.writeBytes(HttpResponseStatusMessage.getContentTypeLine());
         // Send a blank line to indicate the end of the header lines.
         outputStream.writeBytes(CRLF);
-        //outputStream.writeBytes(requestResponseMessage.getEntityBody());
+        //outputStream.writeBytes(HttpResponseStatusMessage.getEntityBody());
         sendBytes(fileStream, outputStream);
         fileStream.close();
         socket.close();
@@ -152,8 +151,8 @@ public class HttpRequest implements Runnable {
     }
 
     public String build404Error() {
-        return "<HTML>" +
-                "<HEAD><TITLE>Not Found</TITLE></HEAD>" +
-                "<BODY>Not Found</BODY></HTML>";
+        return "<!DOCTYPE html><html>" +
+                "<head><title>Not Found</title></head>" +
+                "<body>Not Found</body></html>";
     }
 }
